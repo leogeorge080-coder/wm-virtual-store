@@ -8,15 +8,6 @@
   <!-- Inline favicon to avoid 404s -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234B208C'/%3E%3Ctext x='32' y='40' font-size='28' text-anchor='middle' fill='white' font-family='Arial'%3EWM%3C/text%3E%3C/svg%3E"/>
 
-  <!-- Import map: tell OrbitControls/VRButton what "three" means (our local file) -->
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "./vendor/three/three.module.min.js"
-    }
-  }
-  </script>
-
   <style>
     html,body{margin:0;padding:0;height:100%;background:#fff;overflow:hidden}
     #hud{
@@ -30,45 +21,17 @@
       box-shadow:0 8px 24px rgba(0,0,0,.08);font-weight:700;letter-spacing:.2px;font-size:13px
     }
     .kbd{padding:2px 6px;border-radius:6px;background:#4B208C;color:#fff;font-weight:900}
-    .error{
-      position:fixed;left:50%;top:120px;transform:translateX(-50%);
-      background:#ffe1e1;color:#7a1111;border:1px solid #efb3b3;border-radius:10px;
-      padding:12px 16px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      box-shadow:0 8px 20px rgba(0,0,0,.08);font-weight:600
-    }
   </style>
 </head>
 <body>
   <div id="hud">Western Malabar • 3D + VR Store</div>
   <div id="legend">Pan/Pinch to explore • Tap <span class="kbd">Enter VR</span> if available</div>
 
+  <!-- Strictly local ES module imports (served from /vendor/three) -->
   <script type="module">
-    // 1) Import from LOCAL vendor files (no CDN)
-    let THREE, OrbitControls, VRButton;
-    try {
-      const three = await import('three');
-      const oc = await import('./vendor/three/OrbitControls.js');
-      const vr = await import('./vendor/three/VRButton.js');
-      THREE = three;
-      OrbitControls = oc.OrbitControls;
-      VRButton = vr.VRButton;
-    } catch (e) {
-      // 2) As a last-resort fallback, try CDN once (should rarely be needed)
-      try {
-        const three = await import('https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.min.js');
-        const oc = await import('https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/controls/OrbitControls.js');
-        const vr = await import('https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/webxr/VRButton.js');
-        THREE = three;
-        OrbitControls = oc.OrbitControls;
-        VRButton = vr.VRButton;
-      } catch (err) {
-        const b = document.createElement('div');
-        b.className = 'error';
-        b.textContent = 'Failed to load Three.js modules. Check network and refresh.';
-        document.body.appendChild(b);
-        throw err;
-      }
-    }
+    import * as THREE from "./vendor/three/three.module.min.js";
+    import { OrbitControls } from "./vendor/three/OrbitControls.js";
+    import { VRButton } from "./vendor/three/VRButton.js";
 
     // ---------------- Scene ----------------
     const scene = new THREE.Scene();
@@ -114,17 +77,17 @@
     // demo products
     const products = [
       { name:'Kerala Banana Chips', brand:'Western Malabar', price:'£2.99', img:'https://picsum.photos/seed/banana/512/512' },
-      { name:'Idli Rice 5kg', brand:'Annapoorna', price:'£7.49', img:'https://picsum.photos/seed/rice/512/512' },
-      { name:'Garam Masala', brand:'Madrasi', price:'£1.99', img:'https://picsum.photos/seed/spice/512/512' },
-      { name:'Frozen Parotta', brand:'Daily Delight', price:'£3.49', img:'https://picsum.photos/seed/parotta/512/512' },
-      { name:'Filter Coffee', brand:'Cothas', price:'£4.99', img:'https://picsum.photos/seed/coffee/512/512' },
-      { name:'Coconut Oil 1L', brand:'KPL Shudhi', price:'£5.99', img:'https://picsum.photos/seed/oil/512/512' },
-      { name:'Sambar Powder', brand:'Eastern', price:'£2.29', img:'https://picsum.photos/seed/sambar/512/512' },
-      { name:'Basmati 10kg', brand:'Tilda', price:'£16.99', img:'https://picsum.photos/seed/basmati/512/512' },
-      { name:'Chilli Powder', brand:'777', price:'£2.10', img:'https://picsum.photos/seed/chilli/512/512' },
-      { name:'Appam Mix', brand:'Nirapara', price:'£2.49', img:'https://picsum.photos/seed/appam/512/512' },
-      { name:'Payasam Vermicelli', brand:'Brahmins', price:'£1.49', img:'https://picsum.photos/seed/vermicelli/512/512' },
-      { name:'Tea 250g', brand:'Wayanad', price:'£3.99', img:'https://picsum.photos/seed/tea/512/512' }
+      { name:'Idli Rice 5kg', brand:'Annapoorna',           price:'£7.49', img:'https://picsum.photos/seed/rice/512/512' },
+      { name:'Garam Masala',  brand:'Madrasi',              price:'£1.99', img:'https://picsum.photos/seed/spice/512/512' },
+      { name:'Frozen Parotta', brand:'Daily Delight',       price:'£3.49', img:'https://picsum.photos/seed/parotta/512/512' },
+      { name:'Filter Coffee', brand:'Cothas',               price:'£4.99', img:'https://picsum.photos/seed/coffee/512/512' },
+      { name:'Coconut Oil 1L', brand:'KPL Shudhi',          price:'£5.99', img:'https://picsum.photos/seed/oil/512/512' },
+      { name:'Sambar Powder', brand:'Eastern',              price:'£2.29', img:'https://picsum.photos/seed/sambar/512/512' },
+      { name:'Basmati 10kg',  brand:'Tilda',                price:'£16.99',img:'https://picsum.photos/seed/basmati/512/512' },
+      { name:'Chilli Powder', brand:'777',                  price:'£2.10', img:'https://picsum.photos/seed/chilli/512/512' },
+      { name:'Appam Mix',     brand:'Nirapara',             price:'£2.49', img:'https://picsum.photos/seed/appam/512/512' },
+      { name:'Payasam Vermicelli', brand:'Brahmins',        price:'£1.49', img:'https://picsum.photos/seed/vermicelli/512/512' },
+      { name:'Tea 250g',      brand:'Wayanad',              price:'£3.99', img:'https://picsum.photos/seed/tea/512/512' }
     ];
 
     // product cards
