@@ -5,63 +5,73 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Western Malabar • Virtual Store (3D + VR)</title>
 
-  <!-- Inline favicon to avoid 404s on Pages -->
+  <!-- inline favicon to avoid 404 -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234B208C'/%3E%3Ctext x='32' y='40' font-size='28' text-anchor='middle' fill='white' font-family='Arial'%3EWM%3C/text%3E%3C/svg%3E"/>
 
-  <!-- Slightly faster first paint on GH Pages/CDN -->
-  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.min.js?v=5">
-  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/controls/OrbitControls.min.js?v=5">
-  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/webxr/VRButton.min.js?v=5">
-
-  <meta name="theme-color" content="#4B208C" />
   <style>
-    html, body { margin:0; padding:0; height:100%; background:#fff; overflow:hidden; }
-    /* Prevent long-press menus and gestures on canvas */
-    canvas { touch-action:none; -webkit-touch-callout:none; user-select:none; -webkit-user-select:none; }
+    html,body{margin:0;padding:0;height:100%;background:#fff;overflow:hidden}
     #hud{
-      position:fixed; left:16px; top:16px; z-index:10; padding:10px 12px; border-radius:12px;
-      background:#F3ECFF; color:#4B208C; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      box-shadow:0 8px 24px rgba(0,0,0,.12); font-weight:800; letter-spacing:.2px;
+      position:fixed;left:16px;top:16px;z-index:10;padding:10px 12px;border-radius:12px;
+      background:#F3ECFF;color:#4B208C;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      box-shadow:0 8px 24px rgba(0,0,0,.12);font-weight:800;letter-spacing:.2px
     }
     #legend{
-      position:fixed; right:16px; top:16px; z-index:10; padding:10px 12px; border-radius:12px;
-      background:#fff; color:#4B208C; border:1px solid #E5DBFF; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      box-shadow:0 8px 24px rgba(0,0,0,.08); font-weight:700; letter-spacing:.2px; font-size:13px;
+      position:fixed;right:16px;top:16px;z-index:10;padding:10px 12px;border-radius:12px;
+      background:#fff;color:#4B208C;border:1px solid #E5DBFF;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      box-shadow:0 8px 24px rgba(0,0,0,.08);font-weight:700;letter-spacing:.2px;font-size:13px
     }
-    .kbd{ padding:2px 6px; border-radius:6px; background:#4B208C; color:#fff; font-weight:900; }
+    .kbd{padding:2px 6px;border-radius:6px;background:#4B208C;color:#fff;font-weight:900}
+    #err{
+      position:fixed;left:50%;top:72px;transform:translateX(-50%);
+      background:#ffe8e8;color:#8b0000;border:1px solid #ffa7a7;border-radius:10px;
+      padding:10px 14px;font-family:ui-sans-serif,system-ui;z-index:20;display:none
+    }
   </style>
 </head>
 <body>
   <div id="hud">Western Malabar • 3D + VR Store</div>
   <div id="legend">Pan/Pinch to explore • Tap <span class="kbd">Enter VR</span> if available</div>
+  <div id="err"></div>
 
   <script type="module">
-    // ── Build/Cache buster: bump this when you change the scene ──
-    const V = '5';
-
-    // Primary + fallback CDN for ES modules
+  (async function () {
+    const V = '7'; // bump to bust cache
     const CDN1 = 'https://cdn.jsdelivr.net/npm/three@0.161.0/';
     const CDN2 = 'https://unpkg.com/three@0.161.0/';
+    const showErr = (msg) => {
+      const el = document.getElementById('err');
+      el.textContent = msg;
+      el.style.display = 'block';
+      console.error(msg);
+    };
 
-    async function loadThree(from) {
-      const threeURL = `${from}build/three.module.min.js?v=${V}`;
-      const orbitURL = `${from}examples/jsm/controls/OrbitControls.min.js?v=${V}`;
-      const vrBtnURL  = `${from}examples/jsm/webxr/VRButton.min.js?v=${V}`;
+    async function loadThree(base) {
       const [{ default: THREE }, { OrbitControls }, { VRButton }] = await Promise.all([
-        import(threeURL), import(orbitURL), import(vrBtnURL)
+        import(`${base}build/three.module.min.js?v=${V}`),
+        import(`${base}examples/jsm/controls/OrbitControls.min.js?v=${V}`),
+        import(`${base}examples/jsm/webxr/VRButton.min.js?v=${V}`),
       ]);
       return { THREE, OrbitControls, VRButton };
     }
 
     let THREE, OrbitControls, VRButton;
-    try { ({ THREE, OrbitControls, VRButton } = await loadThree(CDN1)); }
-    catch { ({ THREE, OrbitControls, VRButton } = await loadThree(CDN2)); }
+    try {
+      ({ THREE, OrbitControls, VRButton } = await loadThree(CDN1));
+    } catch (e1) {
+      console.warn('jsDelivr failed, trying unpkg', e1);
+      try {
+        ({ THREE, OrbitControls, VRButton } = await loadThree(CDN2));
+      } catch (e2) {
+        showErr('Failed to load Three.js modules. Check network/CORS and refresh.');
+        return;
+      }
+    }
 
-    // ───────────── Scene setup ─────────────
+    // ---------- Scene ----------
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xFFFFFF);
 
-    const renderer = new THREE.WebGLRenderer({ antialias:true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
@@ -82,30 +92,39 @@
     dir.castShadow = true;
     scene.add(dir);
 
-    // Floor & side walls
+    // --- Safety test cube (should be visible immediately) ---
+    const testCube = new THREE.Mesh(
+      new THREE.BoxGeometry(0.25, 0.25, 0.25),
+      new THREE.MeshStandardMaterial({ color: 0x7B51B3 })
+    );
+    testCube.position.set(4.5, 1.0, 0.4);
+    scene.add(testCube);
+
+    // Floor & side-walls
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(30, 14),
-      new THREE.MeshStandardMaterial({ color:0xF7F2FF, roughness:0.95 })
+      new THREE.MeshStandardMaterial({ color: 0xF7F2FF, roughness: 0.95 })
     );
     floor.rotation.x = -Math.PI / 2;
     floor.receiveShadow = true;
     scene.add(floor);
 
-    const wallMat = new THREE.MeshStandardMaterial({ color:0xE5DBFF, roughness:1.0 });
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xE5DBFF, roughness: 1.0 });
     const lw = new THREE.Mesh(new THREE.BoxGeometry(0.12, 3.2, 14), wallMat);
     lw.position.set(-0.1, 1.6, 0);
-    const rw = lw.clone(); rw.position.x = 9.1;
+    const rw = lw.clone();
+    rw.position.x = 9.1;
     scene.add(lw, rw);
 
     // Shelves
-    const shelfMat = new THREE.MeshStandardMaterial({ color:0x4B208C, roughness:0.6, metalness:0.1 });
+    const shelfMat = new THREE.MeshStandardMaterial({ color: 0x4B208C, roughness: 0.6, metalness: 0.1 });
     function shelf(y) {
       const s = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.08, 1.1), shelfMat);
       s.position.set(4.5, y, 0);
       s.castShadow = s.receiveShadow = true;
       const lip = new THREE.Mesh(
         new THREE.BoxGeometry(9.2, 0.08, 0.04),
-        new THREE.MeshStandardMaterial({ color:0x6b3fa6, roughness:0.4 })
+        new THREE.MeshStandardMaterial({ color: 0x6b3fa6, roughness: 0.4 })
       );
       lip.position.set(0, 0.08, 0.53);
       s.add(lip);
@@ -113,42 +132,44 @@
     }
     shelf(0.65); shelf(1.35); shelf(2.05);
 
-    // Demo products (replace with live feed later)
+    // Demo products
     const products = [
       { name:'Kerala Banana Chips', brand:'Western Malabar', price:'£2.99', img:'https://picsum.photos/seed/banana/512/512' },
-      { name:'Idli Rice 5kg',       brand:'Annapoorna',     price:'£7.49', img:'https://picsum.photos/seed/rice/512/512' },
-      { name:'Garam Masala',        brand:'Madrasi',        price:'£1.99', img:'https://picsum.photos/seed/spice/512/512' },
-      { name:'Frozen Parotta',      brand:'Daily Delight',  price:'£3.49', img:'https://picsum.photos/seed/parotta/512/512' },
-      { name:'Filter Coffee',       brand:'Cothas',         price:'£4.99', img:'https://picsum.photos/seed/coffee/512/512' },
-      { name:'Coconut Oil 1L',      brand:'KPL Shudhi',     price:'£5.99', img:'https://picsum.photos/seed/oil/512/512' },
-      { name:'Sambar Powder',       brand:'Eastern',        price:'£2.29', img:'https://picsum.photos/seed/sambar/512/512' },
-      { name:'Basmati 10kg',        brand:'Tilda',          price:'£16.99',img:'https://picsum.photos/seed/basmati/512/512' },
-      { name:'Chilli Powder',       brand:'777',            price:'£2.10', img:'https://picsum.photos/seed/chilli/512/512' },
-      { name:'Appam Mix',           brand:'Nirapara',       price:'£2.49', img:'https://picsum.photos/seed/appam/512/512' },
-      { name:'Payasam Vermicelli',  brand:'Brahmins',       price:'£1.49', img:'https://picsum.photos/seed/vermicelli/512/512' },
-      { name:'Tea 250g',            brand:'Wayanad',        price:'£3.99', img:'https://picsum.photos/seed/tea/512/512' }
+      { name:'Idli Rice 5kg',        brand:'Annapoorna',     price:'£7.49', img:'https://picsum.photos/seed/rice/512/512' },
+      { name:'Garam Masala',         brand:'Madrasi',        price:'£1.99', img:'https://picsum.photos/seed/spice/512/512' },
+      { name:'Frozen Parotta',       brand:'Daily Delight',  price:'£3.49', img:'https://picsum.photos/seed/parotta/512/512' },
+      { name:'Filter Coffee',        brand:'Cothas',         price:'£4.99', img:'https://picsum.photos/seed/coffee/512/512' },
+      { name:'Coconut Oil 1L',       brand:'KPL Shudhi',     price:'£5.99', img:'https://picsum.photos/seed/oil/512/512' },
+      { name:'Sambar Powder',        brand:'Eastern',        price:'£2.29', img:'https://picsum.photos/seed/sambar/512/512' },
+      { name:'Basmati 10kg',         brand:'Tilda',          price:'£16.99',img:'https://picsum.photos/seed/basmati/512/512' },
+      { name:'Chilli Powder',        brand:'777',            price:'£2.10', img:'https://picsum.photos/seed/chilli/512/512' },
+      { name:'Appam Mix',            brand:'Nirapara',       price:'£2.49', img:'https://picsum.photos/seed/appam/512/512' },
+      { name:'Payasam Vermicelli',   brand:'Brahmins',       price:'£1.49', img:'https://picsum.photos/seed/vermicelli/512/512' },
+      { name:'Tea 250g',             brand:'Wayanad',        price:'£3.99', img:'https://picsum.photos/seed/tea/512/512' }
     ];
 
     // Product cards
     const loader = new THREE.TextureLoader();
-    const group = new THREE.Group(); scene.add(group);
+    const group = new THREE.Group();
+    scene.add(group);
     const W = 0.30, H = 0.42, D = 0.08;
 
     function makeCard(p, x, y) {
       const g = new THREE.BoxGeometry(W, H, D);
-      const tex = loader.load(p.img); tex.colorSpace = THREE.SRGBColorSpace;
-      const front = new THREE.MeshStandardMaterial({ map: tex, roughness:0.7, metalness:0.05 });
-      const side  = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:1.0 });
+      const tex = loader.load(p.img);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const front = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7, metalness: 0.05 });
+      const side = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0 });
       const m = new THREE.Mesh(g, [side, side, side, side, front, side]);
       m.position.set(x, y + H / 2, 0);
       m.castShadow = m.receiveShadow = true;
 
-      // Billboard label
+      // label
       const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 72;
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#4B208C'; ctx.fillRect(0, 0, 256, 72);
-      ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = 'bold 28px Arial'; ctx.fillText(p.brand, 128, 24);
+      ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 28px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(p.brand, 128, 24);
       ctx.font = 'bold 26px Arial'; ctx.fillText(p.price, 128, 52);
       const labelTex = new THREE.CanvasTexture(canvas); labelTex.colorSpace = THREE.SRGBColorSpace;
       const label = new THREE.Mesh(new THREE.PlaneGeometry(W * 1.12, H * 0.36),
@@ -160,7 +181,6 @@
       group.add(m);
     }
 
-    // Lay out products across 3 shelves
     const perShelf = Math.ceil(products.length / 3);
     products.forEach((p, i) => {
       const shelfIndex = Math.floor(i / perShelf);
@@ -170,7 +190,7 @@
       makeCard(p, x, y);
     });
 
-    // Interaction (raycast/tap)
+    // Raycast click
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     renderer.domElement.addEventListener('pointerdown', (event) => {
@@ -188,19 +208,14 @@
       }
     });
 
-    // WebXR (if available)
-    try {
-      if (navigator.xr) {
-        document.body.appendChild(VRButton.createButton(renderer));
-        renderer.xr.enabled = true;
-      }
-    } catch {}
+    // WebXR button if available
+    try { if (navigator.xr) { document.body.appendChild(VRButton.createButton(renderer)); renderer.xr.enabled = true; } } catch {}
 
     // Resize
-    addEventListener('resize', () => {
-      camera.aspect = innerWidth / innerHeight;
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(innerWidth, innerHeight);
+      renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
     // Animate
@@ -208,23 +223,24 @@
     function animate() {
       const t = clock.getElapsedTime();
       controls.update();
-
-      // subtle “time of day” drift
+      // drift & test cube
       const day = Math.sin(t * 0.05) * 0.5 + 0.5;
       hemi.intensity = 0.7 + 0.3 * day;
       dir.position.x = 4 + Math.sin(t * 0.25) * 2.0;
       dir.position.z = 3 + Math.cos(t * 0.25) * 2.0;
+      testCube.rotation.y += 0.02;
 
-      // gentle wobble for cards
-      group.children.forEach(m => {
+      group.children.forEach((m) => {
         const ph = m.userData.phase || 0;
         m.rotation.y = Math.sin(t * 0.3 + ph) * 0.06;
       });
-
-      renderer.render(scene, camera);
-      renderer.setAnimationLoop(animate);
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+        animate();
+      });
     }
     animate();
+  })();
   </script>
 </body>
 </html>
