@@ -5,6 +5,7 @@
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Western Malabar • Virtual Store (3D + VR)</title>
+  <!-- #WM_BUILD:4  (busts GH Pages caches when content changes) -->
 
   <!-- inline favicon to avoid 404s -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234B208C'/%3E%3Ctext x='32' y='40' font-size='28' text-anchor='middle' fill='white' font-family='Arial'%3EWM%3C/text%3E%3C/svg%3E"/>
@@ -28,20 +29,25 @@
   <div id="hud">Western Malabar • 3D + VR Store</div>
   <div id="legend">Pan/Pinch to explore • Tap <span class="kbd">Enter VR</span> if available</div>
 
-  <!-- Three.js via CDN (minified ES modules) -->
+  <!-- Three.js via CDN (minified ES modules) with fallback -->
   <script type="module">
-    // cache-buster to avoid stale CDN/GitHub Pages caching
-    const v = '?v=1';
-    const base = 'https://cdn.jsdelivr.net/npm/three@0.161.0/';
-    const threeURL = base + 'build/three.module.min.js' + v;
-    const orbitURL = base + 'examples/jsm/controls/OrbitControls.min.js' + v;
-    const vrBtnURL = base + 'examples/jsm/webxr/VRButton.min.js' + v;
+    const V = '4'; // bump to bust caches
+    const CDN1 = 'https://cdn.jsdelivr.net/npm/three@0.161.0/';
+    const CDN2 = 'https://unpkg.com/three@0.161.0/';
 
-    const [{default: THREE}, { OrbitControls }, { VRButton }] = await Promise.all([
-      import(threeURL),
-      import(orbitURL),
-      import(vrBtnURL),
-    ]);
+    async function loadThree(from) {
+      const threeURL = `${from}build/three.module.min.js?v=${V}`;
+      const orbitURL = `${from}examples/jsm/controls/OrbitControls.min.js?v=${V}`;
+      const vrBtnURL = `${from}examples/jsm/webxr/VRButton.min.js?v=${V}`;
+      const [{default: THREE}, { OrbitControls }, { VRButton }] = await Promise.all([
+        import(threeURL), import(orbitURL), import(vrBtnURL)
+      ]);
+      return { THREE, OrbitControls, VRButton };
+    }
+
+    let THREE, OrbitControls, VRButton;
+    try { ({ THREE, OrbitControls, VRButton } = await loadThree(CDN1)); }
+    catch { ({ THREE, OrbitControls, VRButton } = await loadThree(CDN2)); }
 
     // ---------------- Scene ----------------
     const scene = new THREE.Scene();
