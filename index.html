@@ -5,15 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Western Malabar • Virtual Store (3D + VR)</title>
 
-  <!-- Map the bare specifier "three" (used inside OrbitControls/VRButton) to our local file -->
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "./vendor/three/three.module.min.js"
-    }
-  }
-  </script>
-
   <!-- Inline favicon to avoid 404s -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%234B208C'/%3E%3Ctext x='32' y='40' font-size='28' text-anchor='middle' fill='white' font-family='Arial'%3EWM%3C/text%3E%3C/svg%3E"/>
 
@@ -36,7 +27,7 @@
   <div id="hud">Western Malabar • 3D + VR Store</div>
   <div id="legend">Pan/Pinch to explore • Tap <span class="kbd">Enter VR</span> if available</div>
 
-  <!-- Strictly local ES modules -->
+  <!-- Strictly local ES modules (GitHub Pages friendly) -->
   <script type="module">
     import * as THREE from "./vendor/three/three.module.min.js";
     import { OrbitControls } from "./vendor/three/OrbitControls.js";
@@ -45,103 +36,157 @@
     // ---------------- Scene ----------------
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xFFFFFF);
+    // (Enhancement) Subtle depth with fog
+    scene.fog = new THREE.Fog(0xFFFFFF, 12, 28);
 
+    // Renderer (perf caps + SRGB)
     const renderer = new THREE.WebGLRenderer({ antialias:true });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); // perf cap
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.body.appendChild(renderer.domElement);
 
     const camera = new THREE.PerspectiveCamera(65, window.innerWidth/window.innerHeight, 0.1, 300);
-    camera.position.set(4.5, 2.2, 8);
+    camera.position.set(4.8, 2.2, 8.6);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(4.5, 1.2, 0);
+    controls.target.set(4.6, 1.2, 0);
     controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 4.2;
+    controls.maxDistance = 16;
+    controls.maxPolarAngle = Math.PI * 0.495;
 
-    // lights
-    const hemi = new THREE.HemisphereLight(0xfff6ff, 0xaad0ff, 0.8); scene.add(hemi);
-    const dir = new THREE.DirectionalLight(0xffffff, 0.9); dir.position.set(4,6,3); dir.castShadow = true; scene.add(dir);
+    // (Enhancement) Nicer light rig
+    const hemi = new THREE.HemisphereLight(0xfff6ff, 0xbfd7ff, 0.85);
+    scene.add(hemi);
 
-    // floor & side walls
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(30,14),
-      new THREE.MeshStandardMaterial({color:0xF7F2FF, roughness:0.95}));
-    floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(6, 7, 6);
+    dir.castShadow = true;
+    dir.shadow.mapSize.set(2048, 2048);
+    scene.add(dir);
+
+    // Floor & walls (brand tones)
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(30,14),
+      new THREE.MeshStandardMaterial({color:0xF7F2FF, roughness:0.95})
+    );
+    floor.rotation.x = -Math.PI/2;
+    floor.receiveShadow = true;
+    scene.add(floor);
 
     const wallMat = new THREE.MeshStandardMaterial({ color:0xE5DBFF, roughness:1.0 });
-    const lw = new THREE.Mesh(new THREE.BoxGeometry(0.12,3.2,14), wallMat); lw.position.set(-0.1,1.6,0);
-    const rw = lw.clone(); rw.position.x = 9.1; scene.add(lw,rw);
+    const lw = new THREE.Mesh(new THREE.BoxGeometry(0.12,3.2,14), wallMat);
+    lw.position.set(-0.1,1.6,0);
+    const rw = lw.clone();
+    rw.position.x = 9.1;
+    scene.add(lw, rw);
 
-    // shelves
+    // Shelves
     const shelfMat = new THREE.MeshStandardMaterial({ color:0x4B208C, roughness:0.6, metalness:0.1 });
     function shelf(y){
       const s = new THREE.Mesh(new THREE.BoxGeometry(9.2,0.08,1.1), shelfMat);
-      s.position.set(4.5,y,0); s.castShadow = s.receiveShadow = true;
-      const lip = new THREE.Mesh(new THREE.BoxGeometry(9.2,0.08,0.04),
-        new THREE.MeshStandardMaterial({ color:0x6b3fa6, roughness:0.4 }));
-      lip.position.set(0,0.08,0.53); s.add(lip); scene.add(s);
+      s.position.set(4.5,y,0);
+      s.castShadow = s.receiveShadow = true;
+      const lip = new THREE.Mesh(
+        new THREE.BoxGeometry(9.2,0.08,0.04),
+        new THREE.MeshStandardMaterial({ color:0x6b3fa6, roughness:0.4 })
+      );
+      lip.position.set(0,0.08,0.53);
+      s.add(lip);
+      scene.add(s);
+      return s;
     }
     shelf(0.65); shelf(1.35); shelf(2.05);
 
-    // demo products
+    // Demo products (swap to your images anytime)
     const products = [
       { name:'Kerala Banana Chips', brand:'Western Malabar', price:'£2.99', img:'https://picsum.photos/seed/banana/512/512' },
-      { name:'Idli Rice 5kg', brand:'Annapoorna',           price:'£7.49', img:'https://picsum.photos/seed/rice/512/512' },
-      { name:'Garam Masala',  brand:'Madrasi',              price:'£1.99', img:'https://picsum.photos/seed/spice/512/512' },
-      { name:'Frozen Parotta', brand:'Daily Delight',       price:'£3.49', img:'https://picsum.photos/seed/parotta/512/512' },
-      { name:'Filter Coffee', brand:'Cothas',               price:'£4.99', img:'https://picsum.photos/seed/coffee/512/512' },
-      { name:'Coconut Oil 1L', brand:'KPL Shudhi',          price:'£5.99', img:'https://picsum.photos/seed/oil/512/512' },
-      { name:'Sambar Powder', brand:'Eastern',              price:'£2.29', img:'https://picsum.photos/seed/sambar/512/512' },
-      { name:'Basmati 10kg',  brand:'Tilda',                price:'£16.99',img:'https://picsum.photos/seed/basmati/512/512' },
-      { name:'Chilli Powder', brand:'777',                  price:'£2.10', img:'https://picsum.photos/seed/chilli/512/512' },
-      { name:'Appam Mix',     brand:'Nirapara',             price:'£2.49', img:'https://picsum.photos/seed/appam/512/512' },
-      { name:'Payasam Vermicelli', brand:'Brahmins',        price:'£1.49', img:'https://picsum.photos/seed/vermicelli/512/512' },
-      { name:'Tea 250g',      brand:'Wayanad',              price:'£3.99', img:'https://picsum.photos/seed/tea/512/512' }
+      { name:'Idli Rice 5kg',       brand:'Annapoorna',     price:'£7.49', img:'https://picsum.photos/seed/rice/512/512' },
+      { name:'Garam Masala',        brand:'Madrasi',        price:'£1.99', img:'https://picsum.photos/seed/spice/512/512' },
+      { name:'Frozen Parotta',      brand:'Daily Delight',  price:'£3.49', img:'https://picsum.photos/seed/parotta/512/512' },
+      { name:'Filter Coffee',       brand:'Cothas',         price:'£4.99', img:'https://picsum.photos/seed/coffee/512/512' },
+      { name:'Coconut Oil 1L',      brand:'KPL Shudhi',     price:'£5.99', img:'https://picsum.photos/seed/oil/512/512' },
+      { name:'Sambar Powder',       brand:'Eastern',        price:'£2.29', img:'https://picsum.photos/seed/sambar/512/512' },
+      { name:'Basmati 10kg',        brand:'Tilda',          price:'£16.99',img:'https://picsum.photos/seed/basmati/512/512' },
+      { name:'Chilli Powder',       brand:'777',            price:'£2.10', img:'https://picsum.photos/seed/chilli/512/512' },
+      { name:'Appam Mix',           brand:'Nirapara',       price:'£2.49', img:'https://picsum.photos/seed/appam/512/512' },
+      { name:'Payasam Vermicelli',  brand:'Brahmins',       price:'£1.49', img:'https://picsum.photos/seed/vermicelli/512/512' },
+      { name:'Tea 250g',            brand:'Wayanad',        price:'£3.99', img:'https://picsum.photos/seed/tea/512/512' }
     ];
 
-    // product cards
-    const loader = new THREE.TextureLoader();
-    const group = new THREE.Group(); scene.add(group);
+    // (Enhancement) Texture loader perf & preload
+    const loadingManager = new THREE.LoadingManager();
+    const loader = new THREE.TextureLoader(loadingManager);
+    loader.setCrossOrigin('anonymous'); // allow external hosts
+
+    // Preload textures (simple cache by URL)
+    const texCache = new Map();
+    products.forEach(p => {
+      if (!texCache.has(p.img)) {
+        const t = loader.load(p.img);
+        t.colorSpace = THREE.SRGBColorSpace;
+        texCache.set(p.img, t);
+      }
+    });
+
+    const group = new THREE.Group();
+    scene.add(group);
     const W=0.30, H=0.42, D=0.08;
 
     function makeCard(p, x, y){
       const g = new THREE.BoxGeometry(W,H,D);
-      const tex = loader.load(p.img); tex.colorSpace = THREE.SRGBColorSpace;
-      const front = new THREE.MeshStandardMaterial({ map:tex, roughness:0.7, metalness:0.05 });
+      const tex = texCache.get(p.img) || loader.load(p.img);
+      tex.colorSpace = THREE.SRGBColorSpace;
+
+      const front = new THREE.MeshStandardMaterial({ map: tex, roughness:0.7, metalness:0.05 });
       const side  = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:1.0 });
       const m = new THREE.Mesh(g, [side,side,side,side,front,side]);
-      m.position.set(x, y+H/2, 0); m.castShadow = m.receiveShadow = true;
+      m.position.set(x, y + H/2, 0);
+      m.castShadow = m.receiveShadow = true;
 
+      // Price/brand label
       const canvas = document.createElement('canvas'); canvas.width=256; canvas.height=72;
       const ctx = canvas.getContext('2d');
       ctx.fillStyle='#4B208C'; ctx.fillRect(0,0,256,72);
       ctx.fillStyle='#FFFFFF'; ctx.font='bold 28px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(p.brand,128,24); ctx.font='bold 26px Arial'; ctx.fillText(p.price,128,52);
-      const labelTex = new THREE.CanvasTexture(canvas); labelTex.colorSpace = THREE.SRGBColorSpace;
-      const label = new THREE.Mesh(new THREE.PlaneGeometry(W*1.12,H*0.36),
-        new THREE.MeshBasicMaterial({ map:labelTex, transparent:true }));
-      label.position.set(0,-H*0.56,D*0.62); m.add(label);
+      const labelTex = new THREE.CanvasTexture(canvas);
+      labelTex.colorSpace = THREE.SRGBColorSpace;
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(W*1.12, H*0.36),
+        new THREE.MeshBasicMaterial({ map:labelTex, transparent:true })
+      );
+      label.position.set(0, -H*0.56, D*0.62);
+      m.add(label);
 
       m.userData.phase = Math.random()*Math.PI*2;
       group.add(m);
     }
 
-    const perShelf = Math.ceil(products.length/3);
+    // (Enhancement) Even spacing across shelves
+    const perShelf = Math.ceil(products.length / 3);
+    const shelfSpan = 8.6;          // usable shelf width
+    const leftEdgeX = 0.9;          // left start
     products.forEach((p,i)=>{
-      const shelfIndex = Math.floor(i/perShelf);
-      const slot = i%perShelf;
-      const x = 0.6 + slot*(W*1.35);
-      const y = 0.65 + shelfIndex*0.7;
+      const shelfIndex = Math.floor(i / perShelf);    // 0,1,2
+      const slot       = i % perShelf;
+      const columns    = Math.max(perShelf, 8);       // ensure we fill nicely
+      const step       = shelfSpan / (columns - 1);   // spacing
+      const x          = leftEdgeX + (slot % columns) * step;
+      const y          = 0.65 + shelfIndex * 0.7;
       makeCard(p,x,y);
     });
 
-    // click/tap
+    // Raycasting for click/tap
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     renderer.domElement.addEventListener('pointerdown', (event)=>{
       const rect = renderer.domElement.getBoundingClientRect();
-      pointer.x = ((event.clientX-rect.left)/rect.width)*2-1;
-      pointer.y = -((event.clientY-rect.top)/rect.height)*2+1;
+      pointer.x = ((event.clientX-rect.left)/rect.width)*2 - 1;
+      pointer.y = -((event.clientY-rect.top)/rect.height)*2 + 1;
       raycaster.setFromCamera(pointer,camera);
       const hits = raycaster.intersectObjects(group.children,false);
       if (hits.length){
@@ -153,29 +198,56 @@
       }
     });
 
-    // XR
+    // (Enhancement) Hover wiggle
+    let lastHover = null;
+    renderer.domElement.addEventListener('pointermove', (event)=>{
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX-rect.left)/rect.width)*2 - 1;
+      pointer.y = -((event.clientY-rect.top)/rect.height)*2 + 1;
+      raycaster.setFromCamera(pointer,camera);
+      const hits = raycaster.intersectObjects(group.children,false);
+
+      if (!hits.length && lastHover){
+        lastHover.scale.set(1,1,1);
+        lastHover = null;
+      } else if (hits.length){
+        const m = hits[0].object;
+        if (lastHover !== m){
+          if (lastHover) lastHover.scale.set(1,1,1);
+          m.scale.set(1.06,1.06,1.06);
+          lastHover = m;
+        }
+      }
+    });
+
+    // WebXR button (shows NOT SUPPORTED on most desktops—expected)
     try { if (navigator.xr) { document.body.appendChild(VRButton.createButton(renderer)); renderer.xr.enabled = true; } } catch {}
 
-    // resize
+    // Resize
     window.addEventListener('resize', ()=>{
-      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    // animate
+    // Animate
     const clock = new THREE.Clock();
     function animate(){
       const t = clock.getElapsedTime();
       controls.update();
+
+      // light drift (subtle)
       const day = (Math.sin(t*0.05)*0.5+0.5);
       hemi.intensity = 0.7 + 0.3*day;
-      dir.position.x = 4 + Math.sin(t*0.25)*2.0;
-      dir.position.z = 3 + Math.cos(t*0.25)*2.0;
+      dir.position.x = 6 + Math.sin(t*0.22)*1.4;
+      dir.position.z = 6 + Math.cos(t*0.22)*1.4;
+
+      // gentle wobble
       group.children.forEach(m=>{
         const ph = m.userData.phase||0;
         m.rotation.y = Math.sin(t*0.3 + ph)*0.06;
       });
+
       renderer.render(scene,camera);
       renderer.setAnimationLoop(animate);
     }
